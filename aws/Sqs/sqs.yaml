@@ -1,0 +1,23 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: Sqs for line-slideshow
+
+Parameters:
+  Env:
+    Type: String
+
+Resources:
+  LineSlideshowSqs:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub line-slideshow-sqs-${Env}.fifo
+      Tags:
+        - Key: system
+          Value: line-slideshow
+      FifoQueue: true
+      VisibilityTimeout: 30
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 20
+      # RedrivePolicy:
+      #   deadLetterTargetArn: !GetAtt LineSlideshowSqsDlq.Arn
+      #   maxReceiveCount: 5
