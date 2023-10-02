@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: API Gateway for line-slideshow
+
+Parameters:
+  Env:
+    Type: String
+
+Resources:
+  LineSlideshowApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub line-slideshow-apigw-${Env}
+      Description: !Sub API Gateway for line-slideshow-${Env}
+      Tags:
+        - Key: system
+          Value: line-slideshow
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      Body:
+        swagger: "2.0"
+        info:
+          title: !Sub line-slideshow-apigw-${Env}
+          description: !Sub API Gateway for line-slideshow-${Env}
+          version: 1.0.0
+        paths:
+          /:
+            get:
+              summary: Get root
+              description: Get root
+              responses:
+                "200":
+                  description: OK
+                  schema:
+                    type: string
+            post:
+              summary: Post root
+              description: Post root
+              responses:
+                "200":
+                  description: OK
+                  schema:
+                    type: string
+  # LineSlideshowApiGatewayDeployment:
+  #   Type: AWS::ApiGateway::Deployment
+  #   DependsOn:
+  #     - LineSlideshowApiGateway
+  #   Properties:
+  #     RestApiId: !Ref LineSlideshowApiGateway
+  #     StageName: !Sub ${Env}
