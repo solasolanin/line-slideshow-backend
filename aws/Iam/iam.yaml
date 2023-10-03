@@ -1,0 +1,33 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: IAM for line-slideshow
+
+Parameters:
+  Env:
+    Type: String
+
+Resources:
+  ApigwCallingSqsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - apigateway.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      RoleName: !Sub apigw-calling-sqs-role-${Env}
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSQSFullAccess
+      Tags:
+        - Key: system
+          Value: line-slideshow
+
+Outputs:
+  ApigwCallingSqsRoleArn:
+    Value: !GetAtt ApigwCallingSqsRole.Arn
+    Export:
+      Name: !Sub apigw-calling-sqs-role-arn-${Env}

@@ -1,8 +1,8 @@
 #!/bin/bash
 
 aws cloudformation deploy \
-    --template-file ./apigw.yaml \
-    --stack-name api-gateway-dev \
+    --template-file ./apigw_stage.yaml \
+    --stack-name api-gateway-stage-dev \
     --profile CryptoLineVSCode \
     --parameter-overrides \
         Env=dev \

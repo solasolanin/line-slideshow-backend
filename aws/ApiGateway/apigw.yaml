@@ -5,6 +5,10 @@ Description: API Gateway for line-slideshow
 Parameters:
   Env:
     Type: String
+  LineSlideshowSqsArn:
+    Type: String
+  ApigwCallingSqsRoleArn:
+    Type: String
 
 Resources:
   LineSlideshowApiGateway:
@@ -21,31 +25,39 @@ Resources:
       Body:
         swagger: "2.0"
         info:
-          title: !Sub line-slideshow-apigw-${Env}
-          description: !Sub API Gateway for line-slideshow-${Env}
-          version: 1.0.0
+          description: "API Gateway for line-slideshow-dev"
+          version: "1.0.0"
+          title: "line-slideshow-apigw-dev"
+        host: "leojboio40.execute-api.ap-northeast-1.amazonaws.com"
+        basePath: "/dev"
+        schemes:
+          - "https"
         paths:
           /:
-            get:
-              summary: Get root
-              description: Get root
-              responses:
-                "200":
-                  description: OK
-                  schema:
-                    type: string
             post:
-              summary: Post root
-              description: Post root
+              consumes:
+                - "application/json"
+              parameters:
+                - name: "X-Line-Signature"
+                  in: "header"
+                  required: true
+                  type: "string"
               responses:
                 "200":
-                  description: OK
-                  schema:
-                    type: string
-  # LineSlideshowApiGatewayDeployment:
-  #   Type: AWS::ApiGateway::Deployment
-  #   DependsOn:
-  #     - LineSlideshowApiGateway
-  #   Properties:
-  #     RestApiId: !Ref LineSlideshowApiGateway
-  #     StageName: !Sub ${Env}
+                  description: "200 response"
+              x-amazon-apigateway-integration:
+                credentials: "arn:aws:iam::935428647279:role/apigw-calling-sqs-role-dev"
+                httpMethod: "POST"
+                uri: "arn:aws:apigateway:ap-northeast-1:sqs:path/935428647279/arn:aws:sqs:ap-northeast-1:935428647279:line-slideshow-sqs-dev.fifo"
+                responses:
+                  default:
+                    statusCode: "200"
+                requestParameters:
+                  integration.request.header.Content-Type: "'application/x-www-form-urlencoded'"
+                requestTemplates:
+                  application/json:
+                    "Action=SendMessage&MessageBody=$util.urlEncode($input.body)\n\
+                    # #set($inputRoot = $input.path('$'))\n# {\n#   \"body\": \"$util.escapeJavaScript($input.json('$'))\"\
+                    \n# }\n"
+                passthroughBehavior: "when_no_match"
+                type: "aws"
