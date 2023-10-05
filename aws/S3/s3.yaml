@@ -1,0 +1,16 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: s3 for line-slideshow
+
+Parameters:
+  Env:
+    Type: String
+
+Resources:
+  LineSlideshowS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub line-slideshow-s3-${Env}
+      Tags:
+        - Key: system
+          Value: line-slideshow
