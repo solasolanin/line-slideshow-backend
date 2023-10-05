@@ -18,6 +18,17 @@ Resources:
       VisibilityTimeout: 30
       MessageRetentionPeriod: 345600
       ReceiveMessageWaitTimeSeconds: 20
-      # RedrivePolicy:
-      #   deadLetterTargetArn: !GetAtt LineSlideshowSqsDlq.Arn
-      #   maxReceiveCount: 5
+      SqsManagedSseEnabled: false
+
+  LineSlideshowSqsPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref LineSlideshowSqs
+      PolicyDocument:
+        Statement:
+          - Sid: 1
+            Effect: Allow
+            Principal: "*"
+            Action: sqs:*
+            Resource: !Ref LineSlideshowSqs
