@@ -10,25 +10,41 @@ Resources:
   LineSlideshowSqs:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: !Sub line-slideshow-sqs-${Env}.fifo
+      QueueName: !Sub line-slideshow-sqs-${Env}
       Tags:
         - Key: system
           Value: line-slideshow
-      FifoQueue: true
       VisibilityTimeout: 30
       MessageRetentionPeriod: 345600
-      ReceiveMessageWaitTimeSeconds: 20
       SqsManagedSseEnabled: false
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt LineSlideshowDlQ.Arn
+        maxReceiveCount: 1
 
-  LineSlideshowSqsPolicy:
-    Type: AWS::SQS::QueuePolicy
+  LineSlideshowDlQ:
+    Type: AWS::SQS::Queue
     Properties:
-      Queues:
-        - !Ref LineSlideshowSqs
-      PolicyDocument:
-        Statement:
-          - Sid: 1
-            Effect: Allow
-            Principal: "*"
-            Action: sqs:*
-            Resource: !Ref LineSlideshowSqs
+      QueueName: !Sub line-slideshow-dlq-${Env}
+      Tags:
+        - Key: system
+          Value: line-slideshow
+      VisibilityTimeout: 30
+      MessageRetentionPeriod: 300
+      SqsManagedSseEnabled: false
+      RedriveAllowPolicy:
+        redrivePermission: allowAll
+
+  # LineSlideshowSqsPolicy:
+  #   Type: AWS::SQS::QueuePolicy
+  #   Properties:
+  #     Queues:
+  #       - !Ref LineSlideshowSqs
+  # PolicyDocument:
+  #   Statement:
+  #     - Sid: 1
+  #       Effect: Allow
+  #       Principal: "*"
+  #       Action: sqs:*
+  #       Resource: !Ref LineSlideshowSqs
+# arn:aws:iam::935428647279:role/apigw-calling-sqs-role-dev
+# "Resource": "https://sqs.ap-northeast-1.amazonaws.com/935428647279/line-slideshow-sqs-dev.fifo"

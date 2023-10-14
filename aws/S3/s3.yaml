@@ -14,3 +14,10 @@ Resources:
       Tags:
         - Key: system
           Value: line-slideshow
+  LineSideshowCodeS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub line-slideshow-code-s3-${Env}
+      Tags:
+        - Key: system
+          Value: line-slideshow
