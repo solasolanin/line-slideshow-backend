@@ -1,0 +1,43 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: lambda for ExecLineSlideshow
+
+Globals:
+  Function:
+    Timeout: 3
+
+Parameters:
+  Env:
+    Type: String
+  LineSlideshowSqsArn:
+    Type: String
+  ExecLineSlideshowRoleArn:
+    Type: String
+
+Resources:
+  ExecLineSlideshowFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub exec-line-slideshow-${Env}
+      CodeUri: main/
+      Handler: app.lambda_handler
+      Runtime: python3.11
+      Architectures:
+        - x86_64
+      Tags:
+        system: line-slideshow
+      Events:
+        SQS:
+          Type: SQS
+          Properties:
+            BatchSize: 1
+            Queue: !Ref LineSlideshowSqsArn
+      Environment:
+        Variables:
+          ENV: !Ref Env
+      Role: !Ref ExecLineSlideshowRoleArn
+
+Outputs:
+  ExecLineSlideshowFunction:
+    Description: Exec Line Slideshow Lambda Function ARN"
+    Value: !GetAtt ExecLineSlideshowFunction.Arn
