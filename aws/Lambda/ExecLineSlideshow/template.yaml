@@ -4,7 +4,7 @@ Description: lambda for ExecLineSlideshow
 
 Globals:
   Function:
-    Timeout: 3
+    Timeout: 10
 
 Parameters:
   Env:

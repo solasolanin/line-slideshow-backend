@@ -1,38 +1,38 @@
 import json
-
-# import requests
 import boto3
 import os
 import logging
 import requests
 from botocore.exceptions import ClientError
 from enum import Enum
+from PIL import Image
+from PIL.ExifTags import TAGS
 
-s3 = boto3.resource('s3')
+
 env = os.environ['ENV']
 
+
 class Returnable(Enum):
-    SUCCESS=0
-    NOT_MESSAGE=1,
-    NOT_IMAGE=2
-    MESSAGE_FORMAT_ERROR=3,
-    INTERNAL_ERROR=99
+    SUCCESS = 0
+    NOT_MESSAGE = 1,
+    NOT_IMAGE = 2
+    MESSAGE_FORMAT_ERROR = 3,
+    INTERNAL_ERROR = 99
 
 
 def lambda_handler(event, context):
-    print('event:',event)
-    
+    print('event:', event)
 
     bucket_name = f"line-slideshow-s3-{env}"
 
-    try:   
+    try:
         # メッセージのパース
         event_body = json.loads(event['Records'][0]['body'])
 
         # メッセージ形式の確認
         if event_body['events'][0]['type'] != "message":
             return response(Returnable.NOT_MESSAGE)
-    
+
         if event_body['events'][0]['message']['type'] != "image":
             return response(Returnable.NOT_IMAGE)
 
@@ -40,58 +40,70 @@ def lambda_handler(event, context):
     except Exception as e:
         return response(Returnable.MESSAGE_FORMAT_ERROR, e)
 
+    # トークンインスタンスの初期化
+    lt = LineToken()
+
     # 画像取得
     message_id = event_body['events'][0]['message']['id']
-    line_token = getLineToken("ACCESS_TOKEN")
     headers = {
-        'Authorization':'Bearer '+line_token,
+        'Authorization': 'Bearer '+lt.get_access_token(),
     }
-    contents = requests.get(f'https://api-data.line.me/v2/bot/message/{message_id}/content', headers=headers)
-    print(contents)
+    contents = requests.get(
+        f'https://api-data.line.me/v2/bot/message/{message_id}/content', headers=headers)
     logging.info(f'status_code:{contents.status_code}')
 
-    # event_body = json.loads(event['Records'][0]['body'])
-    # url = event_body['events'][0]['message']['originalContentUrl']
-    # url = contents['originalContentUrl']
     extension = contents.headers['Content-Type'].split('/')[-1]
-    image_name=f'{message_id}.{extension}'
-    print('extension:',extension)
+    image_name = f'{message_id}.{extension}'
+    print('extension:', extension)
     try:
+        s3 = boto3.resource('s3')
         bucket = s3.Bucket(bucket_name)
         with open('/tmp/'+image_name, 'wb') as f:
             f.write(contents.content)
-           
+
     except Exception as e:
         return response(Returnable.INTERNAL_ERROR, e)
     # 画像アップロード
     bucket.upload_file('/tmp/'+image_name, Key=image_name)
-    # bucket.put_object(Body=image.content, Key=image_name)
+
+    # アカウント名取得
+    account_name = get_account_name(
+        event_body['events'][0]['source']['userId'], lt.get_access_token())
+
+    # メッセージ情報登録
+    set_msg_info(message_id, account_name, image_name, extension)
 
     return response(Returnable.SUCCESS)
 
 
 # トークン取得
-def getLineToken(key=None):
-    secret_name = f"line-slideshow-sm-{env}"
-    region_name = "ap-northeast-1"
+class LineToken:
+    __access_token = None
+    __channel_token = None
 
-    session = boto3.session.Session()
-    client = session.client(
-        service_name='secretsmanager',
-        region_name=region_name
-    )
-    try:
+    def __init__(self):
+        secret_name = f"line-slideshow-sm-{env}"
+        region_name = "ap-northeast-1"
+
+        session = boto3.session.Session()
+        client = session.client(
+            service_name='secretsmanager',
+            region_name=region_name
+        )
         get_secret_value_response = client.get_secret_value(
             SecretId=secret_name
         )
-    except ClientError as e:
-        return response(Returnable.INTERNAL_ERROR, e.response['Error']['Message'])
+        LineToken.__access_token = json.loads(
+            get_secret_value_response['SecretString'])["ACCESS_TOKEN"]
+        LineToken.__channel_token = json.loads(
+            get_secret_value_response['SecretString'])["CHANNEL_TOKEN"]
 
-    print('get_secret_value_response:',get_secret_value_response)
-    secret = json.loads(get_secret_value_response['SecretString'])
-    print('secret:',secret[key])
-    return secret[key] if key!=None else secret
-    
+    def get_access_token(self):
+        return LineToken.__access_token
+
+    def get_channel_token(self):
+        return LineToken.__channel_token
+
 
 def response(returnable, err_message=None):
     match returnable:
@@ -135,3 +147,31 @@ def response(returnable, err_message=None):
                     "message": f"Internal error.\n {err_message}",
                 }),
             }
+
+
+def get_account_name(account_id, line_token):
+    headers = {
+        'Authorization': 'Bearer '+line_token,
+    }
+    contents = requests.get(
+        f'https://api.line.me/v2/bot/profile/{account_id}', headers=headers)
+    res = contents.content.decode('utf-8')
+    return json.loads(res)["displayName"]
+
+
+def set_msg_info(message_id, account_name, file_name, extension, date_time=None):
+    values = {
+        "account_name": account_name,
+        "file_name": file_name,
+        "extension": extension,
+        "date_time": date_time
+    }
+
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table(f'line-slideshow-dynamodb-{env}')
+    table.put_item(
+        Item={
+            "id": message_id,
+            "body": values
+        })
+    return
