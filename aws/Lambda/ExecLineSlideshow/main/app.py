@@ -2,7 +2,6 @@ import json
 import boto3
 import os
 import logging
-from botocore.exceptions import ClientError
 from enum import Enum
 from PIL import Image
 from PIL.ExifTags import TAGS
@@ -14,12 +13,12 @@ import response
 
 
 env = os.environ['ENV']
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 
 def lambda_handler(event, context):
-    print('event:', event)
-
-    bucket_name = f"line-slideshow-s3-{env}"
+    logger.info(event)
 
     try:
         # メッセージのパース
@@ -56,7 +55,7 @@ def lambda_handler(event, context):
 
     # 画像アップロード
     s3 = boto3.resource('s3')
-    bucket = s3.Bucket(bucket_name)
+    bucket = s3.Bucket(f"line-slideshow-s3-{env}")
     bucket.upload_file('/tmp/' + photo_info.filename,
                        Key=f"img/{photo_info.filename}")
     bucket.upload_file('/tmp/'+preview_info.filename,
@@ -82,6 +81,7 @@ def set_msg_info(message_id, account_name, file_name, thumbnail=None, extension=
         "extension": extension,
         "date_time": date_time
     }
+    logger.info(values)
 
     dynamodb = boto3.resource('dynamodb')
     table = dynamodb.Table(f'line-slideshow-dynamodb-{env}')

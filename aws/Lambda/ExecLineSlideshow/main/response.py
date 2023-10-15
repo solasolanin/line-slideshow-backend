@@ -2,8 +2,12 @@ import logging
 import json
 
 
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+
 def success():
-    logging.info("Success")
+    logger.info("Success")
     return {
         "statusCode": 200,
         "body": json.dumps({
@@ -13,7 +17,7 @@ def success():
 
 
 def not_message():
-    logging.warning("Not message")
+    logger.warning("Not message")
     return {
         "statusCode": 204,
         "body": json.dumps({
@@ -23,7 +27,7 @@ def not_message():
 
 
 def not_image():
-    logging.warning("Not image")
+    logger.warning("Not image")
     return {
         "statusCode": 204,
         "body": json.dumps({
@@ -33,7 +37,7 @@ def not_image():
 
 
 def message_format_error(err_message):
-    logging.error(err_message)
+    logger.error(err_message)
     return {
         "statusCode": 400,
         "body": json.dumps({
@@ -43,7 +47,7 @@ def message_format_error(err_message):
 
 
 def internal_error(err_message):
-    logging.error(err_message)
+    logger.error(err_message)
     return {
         "statusCode": 500,
         "body": json.dumps({
