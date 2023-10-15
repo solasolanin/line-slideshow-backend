@@ -2,22 +2,18 @@ import json
 import boto3
 import os
 import logging
-import requests
 from botocore.exceptions import ClientError
 from enum import Enum
 from PIL import Image
 from PIL.ExifTags import TAGS
+import photo
+import preview
+import line_token
+import account
+import response
 
 
 env = os.environ['ENV']
-
-
-class Returnable(Enum):
-    SUCCESS = 0
-    NOT_MESSAGE = 1,
-    NOT_IMAGE = 2
-    MESSAGE_FORMAT_ERROR = 3,
-    INTERNAL_ERROR = 99
 
 
 def lambda_handler(event, context):
@@ -31,138 +27,58 @@ def lambda_handler(event, context):
 
         # メッセージ形式の確認
         if event_body['events'][0]['type'] != "message":
-            return response(Returnable.NOT_MESSAGE)
+            return response.not_message()
 
         if event_body['events'][0]['message']['type'] != "image":
-            return response(Returnable.NOT_IMAGE)
+            return response.not_image()
 
         message = event_body['events'][0]['message']
     except Exception as e:
-        return response(Returnable.MESSAGE_FORMAT_ERROR, e)
+        return response.message_format_error(event)
 
     # トークンインスタンスの初期化
-    lt = LineToken()
+    line_token_info = line_token.LineToken(env)
 
     # 画像取得
     message_id = event_body['events'][0]['message']['id']
-    headers = {
-        'Authorization': 'Bearer '+lt.get_access_token(),
-    }
-    contents = requests.get(
-        f'https://api-data.line.me/v2/bot/message/{message_id}/content', headers=headers)
-    logging.info(f'status_code:{contents.status_code}')
+    photo_info = photo.Photo(line_token_info.access_token, message_id)
+    if photo_info.code != 200:
+        return response.internal_error(f'photo status code: {photo_info.code}')
+    with open('/tmp/'+photo_info.filename, 'wb') as f:
+        f.write(photo_info.content)
 
-    extension = contents.headers['Content-Type'].split('/')[-1]
-    image_name = f'{message_id}.{extension}'
-    print('extension:', extension)
-    try:
-        s3 = boto3.resource('s3')
-        bucket = s3.Bucket(bucket_name)
-        with open('/tmp/'+image_name, 'wb') as f:
-            f.write(contents.content)
+    # 画像のプレビュー情報取得
+    preview_info = preview.Preview(line_token_info.access_token, message_id)
+    if preview_info.code != 200:
+        response.internal_error(f'preview status code: {preview_info.code}')
+    with open('/tmp/'+preview_info.filename, 'wb') as f:
+        f.write(preview_info.content)
 
-    except Exception as e:
-        return response(Returnable.INTERNAL_ERROR, e)
     # 画像アップロード
-    bucket.upload_file('/tmp/'+image_name, Key=image_name)
+    s3 = boto3.resource('s3')
+    bucket = s3.Bucket(bucket_name)
+    bucket.upload_file('/tmp/' + photo_info.filename,
+                       Key=f"img/{photo_info.filename}")
+    bucket.upload_file('/tmp/'+preview_info.filename,
+                       Key=f"tmb/{preview_info.filename}")
 
     # アカウント名取得
-    account_name = get_account_name(
-        event_body['events'][0]['source']['userId'], lt.get_access_token())
+    account_info = account.Account(
+        line_token_info.access_token, event_body['events'][0]['source']['userId'])
+    account_name = account_info.account_name
 
     # メッセージ情報登録
-    set_msg_info(message_id, account_name, image_name, extension)
+    set_msg_info(message_id, account_name,
+                 photo_info.filename, preview_info.filename, photo_info.extension)
 
-    return response(Returnable.SUCCESS)
-
-
-# トークン取得
-class LineToken:
-    __access_token = None
-    __channel_token = None
-
-    def __init__(self):
-        secret_name = f"line-slideshow-sm-{env}"
-        region_name = "ap-northeast-1"
-
-        session = boto3.session.Session()
-        client = session.client(
-            service_name='secretsmanager',
-            region_name=region_name
-        )
-        get_secret_value_response = client.get_secret_value(
-            SecretId=secret_name
-        )
-        LineToken.__access_token = json.loads(
-            get_secret_value_response['SecretString'])["ACCESS_TOKEN"]
-        LineToken.__channel_token = json.loads(
-            get_secret_value_response['SecretString'])["CHANNEL_TOKEN"]
-
-    def get_access_token(self):
-        return LineToken.__access_token
-
-    def get_channel_token(self):
-        return LineToken.__channel_token
+    return response.success()
 
 
-def response(returnable, err_message=None):
-    match returnable:
-        case Returnable.SUCCESS:
-            logging.info("Success")
-            return {
-                "statusCode": 200,
-                "body": json.dumps({
-                    "message": "Image uploaded",
-                }),
-            }
-        case Returnable.NOT_MESSAGE:
-            logging.warning("Not message")
-            return {
-                "statusCode": 204,
-                "body": json.dumps({
-                    "message": "No message",
-                }),
-            }
-        case Returnable.NOT_IMAGE:
-            logging.warning("Not image")
-            return {
-                "statusCode": 204,
-                "body": json.dumps({
-                    "message": "No image",
-                }),
-            }
-        case Returnable.MESSAGE_FORMAT_ERROR:
-            logging.error(err_message)
-            return {
-                "statusCode": 400,
-                "body": json.dumps({
-                    "message": "Message format error",
-                }),
-            }
-        case Returnable.INTERNAL_ERROR:
-            logging.error(err_message)
-            return {
-                "statusCode": 500,
-                "body": json.dumps({
-                    "message": f"Internal error.\n {err_message}",
-                }),
-            }
-
-
-def get_account_name(account_id, line_token):
-    headers = {
-        'Authorization': 'Bearer '+line_token,
-    }
-    contents = requests.get(
-        f'https://api.line.me/v2/bot/profile/{account_id}', headers=headers)
-    res = contents.content.decode('utf-8')
-    return json.loads(res)["displayName"]
-
-
-def set_msg_info(message_id, account_name, file_name, extension, date_time=None):
+def set_msg_info(message_id, account_name, file_name, thumbnail=None, extension=None, date_time=None):
     values = {
         "account_name": account_name,
         "file_name": file_name,
+        "thumbnail": thumbnail,
         "extension": extension,
         "date_time": date_time
     }
