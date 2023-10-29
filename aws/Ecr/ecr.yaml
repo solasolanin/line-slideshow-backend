@@ -1,0 +1,18 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: ECR for line-slideshow
+
+Parameters:
+  Env:
+    Type: String
+
+Resources:
+  EcrRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub line-slideshow-${Env}
+      ImageTagMutability: IMMUTABLE
+      Tags:
+        - Key: system
+          Value: line-slideshow
+      EmptyOnDelete: true
