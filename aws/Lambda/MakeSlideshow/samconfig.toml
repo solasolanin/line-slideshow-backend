@@ -1,0 +1,23 @@
+# More information about the configuration file can be found here:
+# https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-config.html
+version = 0.1
+
+[default.build.parameters]
+cached = true
+parallel = true
+debug = false
+use_container = false
+
+[dev.deploy.parameters]
+debug = false 
+stack_name = "make-slideshow-function-dev"
+s3_bucket = "line-slideshow-code-s3-dev"
+s3_prefix = "make-slideshow-function-dev"
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = false
+region = "ap-northeast-1"
+parameter_overrides = "Env=\"dev\"  MakeSlideshowRoleArn=\"arn:aws:iam::935428647279:role/make-slideshow-lambda-role-dev\""
+image_repositories = ["935428647279.dkr.ecr.ap-northeast-1.amazonaws.com/make-lideshow:latest"]
+
+[default.sync.parameters]
+watch = true

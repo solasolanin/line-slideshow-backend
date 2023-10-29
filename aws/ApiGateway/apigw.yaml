@@ -9,6 +9,8 @@ Parameters:
     Type: String
   ApigwCallingSqsRoleArn:
     Type: String
+  MakeSlideshowLambdaArn:
+    Type: String
 
 Resources:
   LineSlideshowApiGateway:
@@ -63,3 +65,28 @@ Resources:
                   application/json: "Action=SendMessage&MessageBody=$util.urlEncode($input.body)"
                 passthroughBehavior: "when_no_templates"
                 type: "aws"
+          /make:
+            get:
+              consume:
+                - "application/json"
+              parameters:
+                - name: "Authorization"
+                  in: "header"
+                  required: true
+                  type: "string"
+              responses:
+                "200":
+                  description: "200 response"
+                "500":
+                  description: "200 response"
+              x-amazon-apigateway-integration:
+                type: "aws"
+                httpMethod: "GET"
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MakeSlideshowLambdaArn}/invocations"
+  LineSlideshowApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - LineSlideshowApiGateway
+    Properties:
+      RestApiId: !Ref LineSlideshowApiGateway
+      StageName: !Ref Env

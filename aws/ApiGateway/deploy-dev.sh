@@ -6,4 +6,5 @@ aws cloudformation deploy \
     --parameter-overrides \
         Env=dev \
         LineSlideshowSqsArn=arn:aws:sqs:ap-northeast-1:935428647279:line-slideshow-sqs-dev \
-        ApigwCallingSqsRoleArn=arn:aws:iam::935428647279:role/apigw-calling-sqs-role-dev
+        ApigwCallingSqsRoleArn=arn:aws:iam::935428647279:role/apigw-calling-sqs-role-dev \
+        MakeSlideshowLambdaArn=arn:aws:lambda:ap-northeast-1:935428647279:function:make-slideshow-dev
