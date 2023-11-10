@@ -24,3 +24,20 @@ Resources:
         - Key: system
           Value: line-slideshow
       BillingMode: PROVISIONED
+  LineSlideshowDynamoDbContestTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub line-slideshow-dynamodb-contest-${Env}
+      AttributeDefinitions:
+        - AttributeName: prize_id
+          AttributeType: N
+      KeySchema:
+        - AttributeName: prize_id
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 5
+      Tags:
+        - Key: system
+          Value: line-slideshow
+      BillingMode: PROVISIONED
