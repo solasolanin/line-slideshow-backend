@@ -11,7 +11,6 @@ import line_token
 import account
 import response
 
-
 env = os.environ['ENV']
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -65,16 +64,18 @@ def lambda_handler(event, context):
     account_info = account.Account(
         line_token_info.access_token, event_body['events'][0]['source']['userId'])
     account_name = account_info.account_name
+    account_id = account_info.account_id
 
     # メッセージ情報登録
-    set_msg_info(message_id, account_name,
+    set_msg_info(account_id, message_id, account_name,
                  photo_info.filename, preview_info.filename, photo_info.extension)
 
     return response.success()
 
 
-def set_msg_info(message_id, account_name, file_name, thumbnail=None, extension=None, date_time=None):
+def set_msg_info(account_id, message_id, account_name, file_name, thumbnail=None, extension=None, date_time=None):
     values = {
+        "account_id": account_id,
         "account_name": account_name,
         "file_name": file_name,
         "thumbnail": thumbnail,

@@ -14,4 +14,4 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-sam deploy --config-env dev
+sam deploy --config-env dev --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND
