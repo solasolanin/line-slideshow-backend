@@ -22,6 +22,7 @@ BGM_NAME = "Boom.mp3"
 
 
 def lambda_handler(event, context):
+    print("event", event)
     # DynamoDBから画像情報を取得
     photos = photo_info.PhotoInfo(f"line-slideshow-dynamodb-{env}")
     photo_contents = photos.contents
@@ -62,20 +63,21 @@ def lambda_handler(event, context):
         # 画像サイズ取得
         width, height = img.size
 
-        if height >= width:
+        # アスペクト比によって処理を分ける
+        if VIDEO_SIZE[0]/VIDEO_SIZE[1] > width/height:
             # 画像のリサイズ
-            is_wide = False
+            is_wide_margin = False
             nw = round(width*(VIDEO_SIZE[1]/height))
-            resized_img = img.resize((nw, VIDEO_SIZE[1]), Image.BOX)
+            resized_img = img.resize((nw, VIDEO_SIZE[1]))
             # 余白の計算
             x = round((VIDEO_SIZE[0]-nw)/2)
             y = 0
 
         else:
             # 画像のリサイズ
-            is_wide = True
+            is_wide_margin = True
             nh = round(height*(VIDEO_SIZE[0]/width))
-            resized_img = img.resize((VIDEO_SIZE[0], nh), Image.BOX)
+            resized_img = img.resize((VIDEO_SIZE[0], nh))
             # 余白の計算
             x = 0
             y = round((VIDEO_SIZE[1]-nh)/2)
@@ -83,9 +85,10 @@ def lambda_handler(event, context):
         # 余白の黒塗り
         video_frame = Image.new(resized_img.mode, VIDEO_SIZE, (0, 0, 0))
         video_frame.paste(resized_img, (x, y))
+        print("x,y", (x, y))
 
         # 提供者名の追加
-        video_frame = attach_sponsor(account_name, video_frame, is_wide)
+        video_frame = attach_sponsor(account_name, video_frame, is_wide_margin)
         video_frame.save('/tmp/'+'new_'+file_name)
 
         # １枚あたりの表示時間で動画作成
@@ -126,8 +129,16 @@ def lambda_handler(event, context):
     # 動画アップロード
     bucket.upload_file(f'/tmp/main.mp4', Key=f"video/main.mp4")
 
+    return {
+        'statusCode': 200,
+        'body': {
+            'video_url': f"https://line-slideshow-s3-{env}.s3-ap-northeast-1.amazonaws.com/video/main.mp4",
+            'video_name': 'main.mp4',
+        }
+    }
 
-def attach_sponsor(account_name, base_img, is_wide):
+
+def attach_sponsor(account_name, base_img, is_wide_margin):
     MARGIN = 10
     FONT_SIZE = 68
     INI_SIZE = (1920, 256)
@@ -137,7 +148,7 @@ def attach_sponsor(account_name, base_img, is_wide):
 
     # 貼り付ける画像が縦長なら白、横長なら黒の背景を作成
     b_x, b_y = base_img.size
-    im = Image.new("RGB", INI_SIZE, BLACK if is_wide else WHITE)
+    im = Image.new("RGB", INI_SIZE, BLACK if is_wide_margin else WHITE)
     draw = ImageDraw.Draw(im)
     font = ImageFont.truetype("/tmp/NotoSansJP-Bold.ttf", FONT_SIZE)
 
@@ -145,7 +156,7 @@ def attach_sponsor(account_name, base_img, is_wide):
     ix, iy, ex, ey = draw.textbbox((20, 0), TITLE, font=font)
     coordinates = (ix-MARGIN, iy-MARGIN, ex+MARGIN, ey+MARGIN)
     draw.multiline_text(
-        (20, 0), TITLE, fill=WHITE if is_wide else BLACK, font=font)
+        (20, 0), TITLE, fill=WHITE if is_wide_margin else BLACK, font=font)
     im_crop = im.crop(coordinates)
 
     # 貼り付ける画像の上に貼り付け
