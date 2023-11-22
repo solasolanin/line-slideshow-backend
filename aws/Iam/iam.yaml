@@ -45,23 +45,14 @@ Resources:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaSQSQueueExecutionRole
         - arn:aws:iam::aws:policy/AmazonS3FullAccess
         - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
-  MakeSlideshowLabmdaRole:
-    Type: AWS::IAM::Role
+
+  FrontEndUser:
+    Type: AWS::IAM::User
     Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      RoleName: !Sub make-slideshow-lambda-role-${Env}
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-        - arn:aws:iam::aws:policy/AmazonS3FullAccess
-        - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+      UserName: !Sub line-slideshow-frontend-user-${Env}
+      Tags:
+        - Key: system
+          Value: line-slideshow
 
 Outputs:
   ApigwCallingSqsRoleArn:
