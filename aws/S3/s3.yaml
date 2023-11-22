@@ -14,6 +14,11 @@ Resources:
       Tags:
         - Key: system
           Value: line-slideshow
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
   LineSideshowCodeS3Bucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -21,3 +26,28 @@ Resources:
       Tags:
         - Key: system
           Value: line-slideshow
+  LineSlideshowOpenBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub line-slideshow-open-s3-${Env}
+      Tags:
+        - Key: system
+          Value: line-slideshow
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+  LineSlideshowOpenBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref LineSlideshowOpenBucket
+      PolicyDocument:
+        Version: "2008-10-17"
+        Id: "PolicyForCloudFrontPrivateContent"
+        Statement:
+          - Sid: "AllowCloudFrontServicePrincipal"
+            Effect: "Allow"
+            Principal: "*"
+            Action: "s3:GetObject"
+            Resource: !Sub "arn:aws:s3:::line-slideshow-open-s3-${Env}/*"
