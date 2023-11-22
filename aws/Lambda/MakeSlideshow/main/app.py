@@ -30,75 +30,87 @@ def lambda_handler(event, context):
 
     # S3準備
     s3 = boto3.resource('s3')
-    bucket = s3.Bucket(f"line-slideshow-s3-{env}")
+    private_bucket = s3.Bucket(f"line-slideshow-s3-{env}")
+    public_bucket = s3.Bucket(f"line-slideshow-open-s3-{env}")
+
+    # S3から画像リストを取得
+    photo_list = public_bucket.objects.filter(
+        Prefix="img/")
+    print("photo_list", [k.key for k in photo_list])
 
     # 動画名
     v_name = f'{VIDEO_NAME_PREFIX}{datetime.datetime.now().strftime("%Y%m%d%H%M%S")}.mp4'
 
     # フォントファイルダウンロード
-    bucket.download_file("resources/NotoSansJP-Bold.ttf",
-                         "/tmp/NotoSansJP-Bold.ttf")
+    private_bucket.download_file("resources/NotoSansJP-Bold.ttf",
+                                 "/tmp/NotoSansJP-Bold.ttf")
 
     # 動画結合用ファイルダウンロード
-    bucket.download_file("resources/list1.txt", "/tmp/list1.txt")
-    bucket.download_file("resources/list2.txt", "/tmp/list2.txt")
+    private_bucket.download_file("resources/list1.txt", "/tmp/list1.txt")
+    private_bucket.download_file("resources/list2.txt", "/tmp/list2.txt")
 
     # BGMファイルダウンロード
-    bucket.download_file(f"resources/{BGM_NAME}", f"/tmp/{BGM_NAME}")
+    private_bucket.download_file(f"resources/{BGM_NAME}", f"/tmp/{BGM_NAME}")
 
     # 動画作成処理
     clips = []
     clips_name = []
     for contetns in photo_contents:
-        # 投稿者名取得
-        account_name = contetns['body']['account_name']
+        try:
+            # 投稿者名取得
+            account_name = contetns['body']['account_name']
 
-        # 画像取得
-        file_name = contetns['body']['file_name']
-        bucket.download_file(f"img/{file_name}", '/tmp/'+file_name)
+            # 画像取得
+            file_name = contetns['body']['file_name']
+            public_bucket.download_file(f"img/{file_name}", '/tmp/'+file_name)
 
-        # 画像読み込み
-        img = Image.open(f'/tmp/{file_name}')
+            # 画像読み込み
+            img = Image.open(f'/tmp/{file_name}')
 
-        # 画像サイズ取得
-        width, height = img.size
+            # 画像サイズ取得
+            width, height = img.size
 
-        # アスペクト比によって処理を分ける
-        if VIDEO_SIZE[0]/VIDEO_SIZE[1] > width/height:
-            # 画像のリサイズ
-            is_wide_margin = False
-            nw = round(width*(VIDEO_SIZE[1]/height))
-            resized_img = img.resize((nw, VIDEO_SIZE[1]))
-            # 余白の計算
-            x = round((VIDEO_SIZE[0]-nw)/2)
-            y = 0
+            # アスペクト比によって処理を分ける
+            if VIDEO_SIZE[0]/VIDEO_SIZE[1] > width/height:
+                # 画像のリサイズ
+                is_wide_margin = False
+                nw = round(width*(VIDEO_SIZE[1]/height))
+                resized_img = img.resize((nw, VIDEO_SIZE[1]))
+                # 余白の計算
+                x = round((VIDEO_SIZE[0]-nw)/2)
+                y = 0
 
-        else:
-            # 画像のリサイズ
-            is_wide_margin = True
-            nh = round(height*(VIDEO_SIZE[0]/width))
-            resized_img = img.resize((VIDEO_SIZE[0], nh))
-            # 余白の計算
-            x = 0
-            y = round((VIDEO_SIZE[1]-nh)/2)
+            else:
+                # 画像のリサイズ
+                is_wide_margin = True
+                nh = round(height*(VIDEO_SIZE[0]/width))
+                resized_img = img.resize((VIDEO_SIZE[0], nh))
+                # 余白の計算
+                x = 0
+                y = round((VIDEO_SIZE[1]-nh)/2)
 
-        # 余白の黒塗り
-        video_frame = Image.new(resized_img.mode, VIDEO_SIZE, (0, 0, 0))
-        video_frame.paste(resized_img, (x, y))
-        print("x,y", (x, y))
+            # 余白の黒塗り
+            video_frame = Image.new(resized_img.mode, VIDEO_SIZE, (0, 0, 0))
+            video_frame.paste(resized_img, (x, y))
 
-        # 提供者名の追加
-        video_frame = attach_sponsor(account_name, video_frame, is_wide_margin)
-        video_frame.save('/tmp/'+'new_'+file_name)
+            # 提供者名の追加
+            video_frame = attach_sponsor(
+                account_name, video_frame, is_wide_margin)
+            video_frame.save('/tmp/'+'new_'+file_name)
 
-        # １枚あたりの表示時間で動画作成
-        new_file_name = 'new_'+file_name
-        clip = mp.ImageClip(f'/tmp/{new_file_name}').set_duration(SINGLE_TIME)
-        clips.append(clip)
-        clips_name.append(new_file_name)
+            # １枚あたりの表示時間で動画作成
+            new_file_name = 'new_'+file_name
+            clip = mp.ImageClip(
+                f'/tmp/{new_file_name}').set_duration(SINGLE_TIME)
+            clips.append(clip)
+            clips_name.append(new_file_name)
 
-        # tmpファイル削除
-        os.remove('/tmp/'+file_name)
+            # tmpファイル削除
+            os.remove('/tmp/'+file_name)
+
+        except Exception as e:
+            print(e)
+            continue
 
     # 動画の結合
     concat_clip = mp.concatenate_videoclips(clips, method="chain")
@@ -110,9 +122,9 @@ def lambda_handler(event, context):
     # イントロパートの追加
     # s3から取得
     video_files = ["endroll1.mp4", "endroll2.mp4"]
-    bucket.download_file(
+    private_bucket.download_file(
         f"resources/{video_files[0]}", '/tmp/' + video_files[0])
-    bucket.download_file(
+    private_bucket.download_file(
         f"resources/{video_files[1]}", '/tmp/' + video_files[1])
 
     # 音声ファイル結合
@@ -127,12 +139,12 @@ def lambda_handler(event, context):
                           temp_audiofile='/tmp/temp-audio.m4a', remove_temp=True)
 
     # 動画アップロード
-    bucket.upload_file(f'/tmp/main.mp4', Key=f"video/main.mp4")
+    public_bucket.upload_file(f'/tmp/main.mp4', Key=f"video/main.mp4")
 
     return {
         'statusCode': 200,
         'body': {
-            'video_url': f"https://line-slideshow-s3-{env}.s3-ap-northeast-1.amazonaws.com/video/main.mp4",
+            'video_url': f"https://line-slideshow-open-s3-{env}.s3-ap-northeast-1.amazonaws.com/video/main.mp4",
             'video_name': 'main.mp4',
         }
     }
