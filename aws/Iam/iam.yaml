@@ -55,6 +55,7 @@ Resources:
             Principal:
               Service:
                 - lambda.amazonaws.com
+                - apigateway.amazonaws.com
             Action:
               - sts:AssumeRole
       RoleName: !Sub make-slideshow-lambda-role-${Env}
@@ -62,6 +63,15 @@ Resources:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
         - arn:aws:iam::aws:policy/AmazonS3FullAccess
         - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaRole
+
+  FrontEndUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Sub line-slideshow-frontend-user-${Env}
+      Tags:
+        - Key: system
+          Value: line-slideshow
 
 Outputs:
   ApigwCallingSqsRoleArn:

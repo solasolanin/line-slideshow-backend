@@ -5,6 +5,7 @@ import datetime
 import photo_info
 from PIL import Image, ImageDraw, ImageFont
 import moviepy.editor as mp
+from datetime import datetime
 
 
 env = os.environ['ENV']
@@ -12,7 +13,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 # 動画名のプレフィックス
-VIDEO_NAME_PREFIX = "slideshow-"
+VIDEO_NAME_PREFIX = "20231217_浅岡家野牧家_プロフィールムービー_作成日"
 VIDEO_SIZE = (1920, 1080)
 SINGLE_TIME = 1.25  # 1枚あたりの表示時間(sec)
 FRAME_RATE = 24.0  # フレームレート(fps)
@@ -20,9 +21,16 @@ FRAME_RATE = 24.0  # フレームレート(fps)
 # BGM名
 BGM_NAME = "Boom.mp3"
 
+# 写真枚数
+PHOTO_NUM = 139
+
 
 def lambda_handler(event, context):
     print("event", event)
+
+    # 動画ファイル名作成
+    now = datetime.now()
+
     # DynamoDBから画像情報を取得
     photos = photo_info.PhotoInfo(f"line-slideshow-dynamodb-{env}")
     photo_contents = photos.contents
@@ -39,7 +47,7 @@ def lambda_handler(event, context):
     print("photo_list", [k.key for k in photo_list])
 
     # 動画名
-    v_name = f'{VIDEO_NAME_PREFIX}{datetime.datetime.now().strftime("%Y%m%d%H%M%S")}.mp4'
+    v_name = f'{VIDEO_NAME_PREFIX}{datetime.now().strftime("%Y%m%d%H%M%S")}.mp4'
 
     # フォントファイルダウンロード
     private_bucket.download_file("resources/NotoSansJP-Bold.ttf",
@@ -55,6 +63,7 @@ def lambda_handler(event, context):
     # 動画作成処理
     clips = []
     clips_name = []
+    photo_count = 1
     for contetns in photo_contents:
         try:
             # 投稿者名取得
@@ -108,6 +117,12 @@ def lambda_handler(event, context):
             # tmpファイル削除
             os.remove('/tmp/'+file_name)
 
+            # 140枚以上は処理しない
+            photo_count += 1
+            if photo_count >= PHOTO_NUM:
+                print("photo_count", photo_count)
+                break
+
         except Exception as e:
             print(e)
             continue
@@ -121,31 +136,35 @@ def lambda_handler(event, context):
 
     # イントロパートの追加
     # s3から取得
-    video_files = ["endroll1.mp4", "endroll2.mp4"]
+    video_files = ["endroll1.mp4", "endroll2.mp4", "endroll3.mp4"]
     private_bucket.download_file(
         f"resources/{video_files[0]}", '/tmp/' + video_files[0])
     private_bucket.download_file(
         f"resources/{video_files[1]}", '/tmp/' + video_files[1])
+    private_bucket.download_file(
+        f"resources/{video_files[2]}", '/tmp/' + video_files[2])
 
     # 音声ファイル結合
     intro1_clip = mp.VideoFileClip(f"/tmp/{video_files[0]}")
     intro2_clip = mp.VideoFileClip(f"/tmp/{video_files[1]}")
+    final_clip = mp.VideoFileClip(f"/tmp/{video_files[2]}")
     # イントロ２からBGM開始なので先に結合
-    audio_clip_tmp = mp.concatenate_videoclips([intro2_clip, concat_clip])
+    audio_clip_tmp = mp.concatenate_videoclips(
+        [intro2_clip, concat_clip, final_clip])
     audio_clip = audio_clip_tmp.set_audio(mp.AudioFileClip(f"/tmp/{BGM_NAME}"))
     video = mp.concatenate_videoclips([intro1_clip, audio_clip])
 
-    video.write_videofile("/tmp/main.mp4", codec='libx264', audio_codec='aac',
+    video.write_videofile(f"/tmp/{v_name}", codec='libx264', audio_codec='aac',
                           temp_audiofile='/tmp/temp-audio.m4a', remove_temp=True)
 
     # 動画アップロード
-    public_bucket.upload_file(f'/tmp/main.mp4', Key=f"video/main.mp4")
+    public_bucket.upload_file(f'/tmp/{v_name}', Key=f"video/{v_name}")
 
     return {
         'statusCode': 200,
         'body': {
-            'video_url': f"https://line-slideshow-open-s3-{env}.s3-ap-northeast-1.amazonaws.com/video/main.mp4",
-            'video_name': 'main.mp4',
+            'video_url': f"https://line-slideshow-open-s3-{env}.s3-ap-northeast-1.amazonaws.com/video/{v_name}",
+            'video_name': f'{v_name}',
         }
     }
 
