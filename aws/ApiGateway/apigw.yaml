@@ -25,11 +25,11 @@ Resources:
       Body:
         swagger: "2.0"
         info:
-          description: "API Gateway for line-slideshow-dev"
+          description: !Sub API Gateway for line-slideshow-${Env}
           version: "1.0.0"
-          title: "line-slideshow-apigw-dev"
+          title: !Sub line-slideshow-apigw-${Env}
         host: "leojboio40.execute-api.ap-northeast-1.amazonaws.com"
-        basePath: "/dev"
+        basePath: !Sub "/${Env}"
         schemes:
           - "https"
         paths:
@@ -53,7 +53,6 @@ Resources:
                 credentials: !Sub "arn:aws:iam::935428647279:role/apigw-calling-sqs-role-${Env}"
                 httpMethod: "POST"
                 uri: !Sub "arn:aws:apigateway:${AWS::Region}:sqs:path/${AWS::AccountId}/line-slideshow-sqs-${Env}"
-                # uri: "arn:aws:apigateway:ap-northeast-1:sqs:path/935428647279/arn:aws:sqs:ap-northeast-1:935428647279:line-slideshow-sqs-dev.fifo"
                 responses:
                   default:
                     statusCode: "200"
