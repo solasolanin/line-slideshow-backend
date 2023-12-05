@@ -2,3 +2,5 @@
 .vscode
 
 /aws/Lambda/ExampleFunction
+
+/aws/S3/resources

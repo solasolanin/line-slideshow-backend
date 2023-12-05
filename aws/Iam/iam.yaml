@@ -26,7 +26,7 @@ Resources:
       Tags:
         - Key: system
           Value: line-slideshow
-  ExecLineSlideshowLambdadRole:
+  ExecLineSlideshowLambdaRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -45,7 +45,7 @@ Resources:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaSQSQueueExecutionRole
         - arn:aws:iam::aws:policy/AmazonS3FullAccess
         - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
-  MakeSlideshowLabmdaRole:
+  MakeSlideshowLambdaRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -55,7 +55,6 @@ Resources:
             Principal:
               Service:
                 - lambda.amazonaws.com
-                - apigateway.amazonaws.com
             Action:
               - sts:AssumeRole
       RoleName: !Sub make-slideshow-lambda-role-${Env}
@@ -78,7 +77,11 @@ Outputs:
     Value: !GetAtt ApigwCallingSqsRole.Arn
     Export:
       Name: !Sub apigw-calling-sqs-role-arn-${Env}
-  ExecLineSlideshowLambdadRoleArn:
-    Value: !GetAtt ExecLineSlideshowLambdadRole.Arn
+  ExecLineSlideshowLambdaRoleArn:
+    Value: !GetAtt ExecLineSlideshowLambdaRole.Arn
     Export:
       Name: !Sub exec-line-slideshow-lambda-role-arn-${Env}
+  MakeSlideshowLambdaRoleArn:
+    Value: !GetAtt MakeSlideshowLambdaRole.Arn
+    Export:
+      Name: !Sub make-slideshow-lambda-role-arn-${Env}

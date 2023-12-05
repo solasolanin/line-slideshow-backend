@@ -9,6 +9,8 @@ Globals:
 Parameters:
   Env:
     Type: String
+  MakeSlideshowRoleArn:
+    Type: String
 
 Resources:
   MakeSlideshowFunction:
@@ -28,4 +30,4 @@ Resources:
         Variables:
           ENV: !Ref Env
           TZ: Asia/Tokyo
-      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/make-slideshow-lambda-role-${Env}
+      Role: !Ref MakeSlideshowRoleArn
