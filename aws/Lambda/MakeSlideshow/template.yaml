@@ -12,6 +12,9 @@ Parameters:
   MakeSlideshowRoleArn:
     Type: String
 
+Conditions:
+  IsDev: !Equals [!Ref Env, dev]
+
 Resources:
   MakeSlideshowFunction:
     Type: AWS::Serverless::Function
@@ -21,7 +24,7 @@ Resources:
       Handler: app.lambda_handler
       Runtime: python3.11
       Timeout: 600
-      MemorySize: 2048
+      MemorySize: !If [IsDev, 2048, 5000]
       Architectures:
         - x86_64
       Tags:
