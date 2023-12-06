@@ -1,0 +1,70 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+
+Description: cloud formation root yaml for line-slideshow
+
+Parameters:
+  Env:
+    Type: String
+
+Resources:
+  IAM:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: Iam/iam.yaml
+      Parameters:
+        Env: !Ref Env
+
+  S3:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: S3/s3.yaml
+      Parameters:
+        Env: !Ref Env
+
+  SecretsManager:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: SecretsManager/secretsmanager.yaml
+      Parameters:
+        Env: !Ref Env
+
+  DynamoDB:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: DynamoDB/dynamodb.yaml
+      Parameters:
+        Env: !Ref Env
+
+  Sqs:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: Sqs/sqs.yaml
+      Parameters:
+        Env: !Ref Env
+
+  ExecLineSlideshowFunction:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: Lambda/ExecLineSlideshow/template.yaml
+      Parameters:
+        Env: !Ref Env
+        LineSlideshowSqsArn: !GetAtt Sqs.Outputs.QueArn
+        ExecLineSlideshowRoleArn: !GetAtt IAM.Outputs.ExecLineSlideshowLambdaRoleArn
+
+  MakeSlideshowFunction:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: Lambda/MakeSlideshow/template.yaml
+      Parameters:
+        Env: !Ref Env
+        MakeSlideshowRoleArn: !GetAtt IAM.Outputs.MakeSlideshowLambdaRoleArn
+
+  ApiGateway:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ApiGateway/apigw.yaml
+      Parameters:
+        Env: !Ref Env
+        LineSlideshowSqsArn: !GetAtt Sqs.Outputs.QueArn
+        ApigwCallingSqsRoleArn: !GetAtt IAM.Outputs.ApigwCallingSqsRoleArn

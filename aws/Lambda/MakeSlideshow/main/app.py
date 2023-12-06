@@ -13,7 +13,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 # 動画名のプレフィックス
-VIDEO_NAME_PREFIX = "20231217_浅岡家野牧家_プロフィールムービー_作成日"
+VIDEO_NAME_PREFIX = "20231217_浅岡家野牧家_エンドロールムービー_作成日"
 VIDEO_SIZE = (1920, 1080)
 SINGLE_TIME = 1.25  # 1枚あたりの表示時間(sec)
 FRAME_RATE = 24.0  # フレームレート(fps)

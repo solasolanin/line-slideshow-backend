@@ -8,10 +8,15 @@ class Account:
         headers = {
             "Authorization": f"Bearer {access_token}"
         }
+        print("account_id: ", account_id)
         res = requests.get(
             f'https://api.line.me/v2/bot/profile/{account_id}', headers=headers)
         res = res.content.decode('utf-8')
-        self.__account_name = json.loads(res)["displayName"]
+        print("res: ", res)
+        try:
+            self.__account_name = json.loads(res)["displayName"]
+        except:
+            self.__account_name = "匿名"
 
     @property
     def account_id(self):

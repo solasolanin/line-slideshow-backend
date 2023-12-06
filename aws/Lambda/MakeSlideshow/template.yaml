@@ -9,6 +9,11 @@ Globals:
 Parameters:
   Env:
     Type: String
+  MakeSlideshowRoleArn:
+    Type: String
+
+Conditions:
+  IsDev: !Equals [!Ref Env, dev]
 
 Resources:
   MakeSlideshowFunction:
@@ -19,10 +24,7 @@ Resources:
       Handler: app.lambda_handler
       Runtime: python3.11
       Timeout: 600
-      MemorySize: 2048
-      # Layers:
-      # - arn:aws:lambda:ap-northeast-1:935428647279:layer:ffmpeg:1
-      # PackageType: Image
+      MemorySize: !If [IsDev, 2048, 5000]
       Architectures:
         - x86_64
       Tags:
@@ -31,10 +33,4 @@ Resources:
         Variables:
           ENV: !Ref Env
           TZ: Asia/Tokyo
-      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/make-slideshow-lambda-role-dev
-      # Role: !Ref MakeSlideshowRoleArn
-      # ImageUri: 935428647279.dkr.ecr.ap-northeast-1.amazonaws.com/make-lideshow:latest
-    # Metadata:
-    #   Dockerfile: Dockerfile
-    #   DockerContext: main/
-    #   DockerTag: python3.11
+      Role: !Ref MakeSlideshowRoleArn
