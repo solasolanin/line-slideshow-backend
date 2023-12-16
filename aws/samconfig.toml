@@ -1,6 +1,6 @@
 version = 0.1
 [stg.deploy.parameters]
-stack_name = "line-slideshow-backend"
+stack_name = "line-slideshow-backend-stg"
 resolve_s3 = true
 s3_prefix = "line-slideshow-backend"
 region = "ap-northeast-1"
@@ -10,7 +10,7 @@ image_repositories = []
 on_failure = "DO_NOTHING"
 
 [prod.deploy.parameters]
-stack_name = "line-slideshow-backend"
+stack_name = "line-slideshow-backend-prod"
 resolve_s3 = true
 s3_prefix = "line-slideshow-backend"
 region = "ap-northeast-1"
